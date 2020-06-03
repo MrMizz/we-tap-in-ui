@@ -16,8 +16,8 @@ main =
 
 
 type State
-    = Open
-    | Closed
+    = Searching
+    | Found
 
 
 type alias Model =
@@ -30,7 +30,7 @@ type alias Model =
 
 initialModel : Model
 initialModel =
-    { state = Closed
+    { state = Searching
     , values = fruits
     , selected = Nothing
     , query = ""
@@ -57,42 +57,37 @@ fruits =
 view : Model -> Html Msg
 view model =
     case model.state of
-        Open ->
-            viewOpen model
+        Searching ->
+            viewSearching model
 
-        Closed ->
-            viewClosed model
+        Found ->
+            viewFound model
 
 
-viewOpen : Model -> Html Msg
-viewOpen model =
+viewSearching : Model -> Html Msg
+viewSearching model =
     div [ class "dropdown" ]
-        [ dropdownHead model.selected CloseSelect
+        [ dropdownHead
         , dropdownBody model
         ]
 
 
-viewClosed : Model -> Html Msg
-viewClosed model =
+viewFound : Model -> Html Msg
+viewFound model =
     div [ class "dropdown" ]
-        [ dropdownHead model.selected OpenSelect
+        [ dropdownHead
+        , dropdownBody model
+        , maybeItemFound model.selected
         ]
 
+
+dropdownHead : Html Msg
+dropdownHead =
+    p [] [ text "Search for a Tap In!" ]
 
 dropdownItem : String -> Html Msg
 dropdownItem value =
     li [ onClick (ItemSelected value) ] [ text value ]
-
-
-dropdownHead : Maybe String -> Msg -> Html Msg
-dropdownHead selected msg =
-    case selected of
-        Nothing ->
-            p [ onClick msg ] [ text "Click to toggle" ]
-
-        Just value ->
-            p [ onClick msg ] [ text value ]
-
 
 dropdownBody : Model -> Html Msg
 dropdownBody model =
@@ -100,6 +95,17 @@ dropdownBody model =
         [ input [ id "search-box", onInput SearchInput ] []
         , ul [] (List.map dropdownItem (filteredValues model))
         ]
+
+itemFound: String -> Html Msg
+itemFound item =
+    div [ class "item-found"] [text item]
+
+maybeItemFound: Maybe String -> Html Msg
+maybeItemFound item =
+    case item of
+        Nothing -> itemFound ""
+
+        Just str -> itemFound str
 
 
 filteredValues : Model -> List String
@@ -113,29 +119,21 @@ matchQuery needle haystack =
 
 
 type Msg
-    = OpenSelect
-    | CloseSelect
+    = SearchAgain
     | ItemSelected String
     | SearchInput String
-    | Noop
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Noop ->
-            ( model, Cmd.none )
-
-        OpenSelect ->
-            ( { model | state = Open }, Cmd.none )
-
-        CloseSelect ->
-            ( { model | state = Closed }, Cmd.none )
+        SearchAgain ->
+            ( { model | state = Searching }, Cmd.none )
 
         ItemSelected value ->
-            ( { model | selected = Just value, state = Closed, query = "" }
+            ( { model | selected = Just value, state = Found, query = "" }
             , Cmd.none
             )
 
         SearchInput query ->
-            ( { model | query = query }, Cmd.none )
+            ( { model | query = query, selected = Nothing }, Cmd.none )

@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>We Tap In</title>
+  <title>Main</title>
   <style>body { padding: 0; margin: 0; }</style>
 </head>
 
@@ -5158,10 +5158,10 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$element = _Browser_element;
-var $author$project$Main$Closed = {$: 'Closed'};
+var $author$project$Main$Searching = {$: 'Searching'};
 var $author$project$Main$fruits = _List_fromArray(
 	['Rick James', 'Prince', 'James Brown', 'Kaytra', 'Shorter', 'Monk', 'Aka Big Time Tap in']);
-var $author$project$Main$initialModel = {query: '', selected: $elm$core$Maybe$Nothing, state: $author$project$Main$Closed, values: $author$project$Main$fruits};
+var $author$project$Main$initialModel = {query: '', selected: $elm$core$Maybe$Nothing, state: $author$project$Main$Searching, values: $author$project$Main$fruits};
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $author$project$Main$init = function (_v0) {
@@ -5169,23 +5169,15 @@ var $author$project$Main$init = function (_v0) {
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
 var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
-var $author$project$Main$Open = {$: 'Open'};
+var $author$project$Main$Found = {$: 'Found'};
 var $author$project$Main$update = F2(
 	function (msg, model) {
 		switch (msg.$) {
-			case 'Noop':
-				return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
-			case 'OpenSelect':
+			case 'SearchAgain':
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
-						{state: $author$project$Main$Open}),
-					$elm$core$Platform$Cmd$none);
-			case 'CloseSelect':
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{state: $author$project$Main$Closed}),
+						{state: $author$project$Main$Searching}),
 					$elm$core$Platform$Cmd$none);
 			case 'ItemSelected':
 				var value = msg.a;
@@ -5195,7 +5187,7 @@ var $author$project$Main$update = F2(
 						{
 							query: '',
 							selected: $elm$core$Maybe$Just(value),
-							state: $author$project$Main$Closed
+							state: $author$project$Main$Found
 						}),
 					$elm$core$Platform$Cmd$none);
 			default:
@@ -5203,11 +5195,10 @@ var $author$project$Main$update = F2(
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
-						{query: query}),
+						{query: query, selected: $elm$core$Maybe$Nothing}),
 					$elm$core$Platform$Cmd$none);
 		}
 	});
-var $author$project$Main$OpenSelect = {$: 'OpenSelect'};
 var $elm$json$Json$Encode$string = _Json_wrap;
 var $elm$html$Html$Attributes$stringProperty = F2(
 	function (key, string) {
@@ -5218,6 +5209,13 @@ var $elm$html$Html$Attributes$stringProperty = F2(
 	});
 var $elm$html$Html$Attributes$class = $elm$html$Html$Attributes$stringProperty('className');
 var $elm$html$Html$div = _VirtualDom_node('div');
+var $author$project$Main$SearchInput = function (a) {
+	return {$: 'SearchInput', a: a};
+};
+var $author$project$Main$ItemSelected = function (a) {
+	return {$: 'ItemSelected', a: a};
+};
+var $elm$html$Html$li = _VirtualDom_node('li');
 var $elm$virtual_dom$VirtualDom$Normal = function (a) {
 	return {$: 'Normal', a: a};
 };
@@ -5235,56 +5233,8 @@ var $elm$html$Html$Events$onClick = function (msg) {
 		'click',
 		$elm$json$Json$Decode$succeed(msg));
 };
-var $elm$html$Html$p = _VirtualDom_node('p');
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
-var $author$project$Main$dropdownHead = F2(
-	function (selected, msg) {
-		if (selected.$ === 'Nothing') {
-			return A2(
-				$elm$html$Html$p,
-				_List_fromArray(
-					[
-						$elm$html$Html$Events$onClick(msg)
-					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text('Click to toggle')
-					]));
-		} else {
-			var value = selected.a;
-			return A2(
-				$elm$html$Html$p,
-				_List_fromArray(
-					[
-						$elm$html$Html$Events$onClick(msg)
-					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text(value)
-					]));
-		}
-	});
-var $author$project$Main$viewClosed = function (model) {
-	return A2(
-		$elm$html$Html$div,
-		_List_fromArray(
-			[
-				$elm$html$Html$Attributes$class('dropdown')
-			]),
-		_List_fromArray(
-			[
-				A2($author$project$Main$dropdownHead, model.selected, $author$project$Main$OpenSelect)
-			]));
-};
-var $author$project$Main$CloseSelect = {$: 'CloseSelect'};
-var $author$project$Main$SearchInput = function (a) {
-	return {$: 'SearchInput', a: a};
-};
-var $author$project$Main$ItemSelected = function (a) {
-	return {$: 'ItemSelected', a: a};
-};
-var $elm$html$Html$li = _VirtualDom_node('li');
 var $author$project$Main$dropdownItem = function (value) {
 	return A2(
 		$elm$html$Html$li,
@@ -5387,7 +5337,35 @@ var $author$project$Main$dropdownBody = function (model) {
 					$author$project$Main$filteredValues(model)))
 			]));
 };
-var $author$project$Main$viewOpen = function (model) {
+var $elm$html$Html$p = _VirtualDom_node('p');
+var $author$project$Main$dropdownHead = A2(
+	$elm$html$Html$p,
+	_List_Nil,
+	_List_fromArray(
+		[
+			$elm$html$Html$text('Search for a Tap In!')
+		]));
+var $author$project$Main$itemFound = function (item) {
+	return A2(
+		$elm$html$Html$div,
+		_List_fromArray(
+			[
+				$elm$html$Html$Attributes$class('item-found')
+			]),
+		_List_fromArray(
+			[
+				$elm$html$Html$text(item)
+			]));
+};
+var $author$project$Main$maybeItemFound = function (item) {
+	if (item.$ === 'Nothing') {
+		return $author$project$Main$itemFound('');
+	} else {
+		var str = item.a;
+		return $author$project$Main$itemFound(str);
+	}
+};
+var $author$project$Main$viewFound = function (model) {
 	return A2(
 		$elm$html$Html$div,
 		_List_fromArray(
@@ -5396,16 +5374,30 @@ var $author$project$Main$viewOpen = function (model) {
 			]),
 		_List_fromArray(
 			[
-				A2($author$project$Main$dropdownHead, model.selected, $author$project$Main$CloseSelect),
+				$author$project$Main$dropdownHead,
+				$author$project$Main$dropdownBody(model),
+				$author$project$Main$maybeItemFound(model.selected)
+			]));
+};
+var $author$project$Main$viewSearching = function (model) {
+	return A2(
+		$elm$html$Html$div,
+		_List_fromArray(
+			[
+				$elm$html$Html$Attributes$class('dropdown')
+			]),
+		_List_fromArray(
+			[
+				$author$project$Main$dropdownHead,
 				$author$project$Main$dropdownBody(model)
 			]));
 };
 var $author$project$Main$view = function (model) {
 	var _v0 = model.state;
-	if (_v0.$ === 'Open') {
-		return $author$project$Main$viewOpen(model);
+	if (_v0.$ === 'Searching') {
+		return $author$project$Main$viewSearching(model);
 	} else {
-		return $author$project$Main$viewClosed(model);
+		return $author$project$Main$viewFound(model);
 	}
 };
 var $author$project$Main$main = $elm$browser$Browser$element(
