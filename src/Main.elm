@@ -44,18 +44,13 @@ init _ =
 
 fruits : List String
 fruits =
-    [ "bananas"
-    , "apples"
-    , "oranges"
-    , "peaches"
-    , "strawberries"
-    , "nectarines"
-    , "melons"
-    , "raspberries"
-    , "apricots"
-    , "blueberries"
-    , "guava"
-    , "plantain"
+    [ "Rick James"
+    , "Prince"
+    , "James Brown"
+    , "Kaytra"
+    , "Shorter"
+    , "Monk"
+    , "Aka Big Time Tap in"
     ]
 
 
