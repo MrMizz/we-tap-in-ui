@@ -4,7 +4,9 @@ import Browser
 import Html exposing (..)
 import Html.Attributes exposing (class, id)
 import Html.Events exposing (onClick, onInput)
-
+import Json.Decode as Decode
+import Json.Encode as Encode
+import Http
 
 main =
     Browser.element
@@ -117,10 +119,45 @@ matchQuery : String -> String -> Bool
 matchQuery needle haystack =
     String.contains (String.toLower needle) (String.toLower haystack)
 
+type alias Request =
+    { titles: List String
+    , direction: String
+    }
+
+type alias Response =
+    { titles : List String
+    , related_pages : List String
+    }
+
+requestEncoder: Request -> Encode.Value
+requestEncoder request=
+    Encode.object
+        [ ( "titles", Encode.list Encode.string request.titles )
+        , ( "direction", Encode.string request.direction )
+        ]
+
+responseDecoder: Decode.Decoder Response
+responseDecoder =
+    Decode.map2 Response
+        (Decode.field "titles" (Decode.list Decode.string))
+        (Decode.field "related_pages" (Decode.list Decode.string))
+
+buildRequest : String -> Request
+buildRequest selected =
+    Request [selected] "in"
+
+post : Request -> Cmd Msg
+post request =
+  Http.post
+    { url = "https://am121f9ih9.execute-api.us-west-2.amazonaws.com/default/v1/tap-in"
+    , body = Http.jsonBody (requestEncoder request)
+    , expect = Http.expectJson PostReceived responseDecoder
+    }
 
 type Msg
     = SearchAgain
     | ItemSelected String
+    | PostReceived (Result Http.Error Response)
     | SearchInput String
 
 
@@ -130,10 +167,13 @@ update msg model =
         SearchAgain ->
             ( { model | state = Searching }, Cmd.none )
 
-        ItemSelected value ->
-            ( { model | selected = Just value, state = Found, query = "" }
-            , Cmd.none
-            )
-
         SearchInput query ->
             ( { model | query = query, selected = Nothing }, Cmd.none )
+
+        ItemSelected value ->
+            ( { model | selected = Just value, state = Found, query = "" }
+            , post (buildRequest value)
+            )
+
+
+
