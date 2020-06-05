@@ -2,12 +2,15 @@ module Main exposing (main)
 
 import Browser
 import Html exposing (..)
-import Html.Attributes exposing (class, id)
+import Html.Attributes exposing (class)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Http
 
+-- Main
+
+main : Program () Model Msg
 main =
     Browser.element
         { init = init
@@ -17,116 +20,79 @@ main =
         }
 
 
-type State
-    = Searching
-    | Found
 
+-- Model
 
 type alias Model =
     { state : State
-    , values : List String
-    , selected : Maybe String
-    , query : String
+    , query : Maybe String
     }
 
+type State
+    = BuildingRequest
+    | RequestSuccess Response
+    | RequestFailure
+
+type alias Response =
+    { titles : List String
+    , related_pages : List String
+    }
 
 initialModel : Model
 initialModel =
-    { state = Searching
-    , values = fruits
-    , selected = Nothing
-    , query = ""
+    { state = BuildingRequest
+    , query = Nothing
     }
-
 
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( initialModel, Cmd.none )
 
 
-fruits : List String
-fruits =
-    [ "Rick James"
-    , "Prince"
-    , "James Brown"
-    , "Kaytra"
-    , "Shorter"
-    , "Monk"
-    , "Aka Big Time Tap in"
-    ]
+
+-- UPDATE
+
+type Msg
+    = SearchInput String
+    | MakeRequest
+    | PostReceived (Result Http.Error Response)
+    | ClearSearch
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        SearchInput query ->
+            ( { model | query = Just query }, Cmd.none )
+
+        MakeRequest ->
+            case model.query of
+                Just query ->
+                    ( model, post (buildRequest query) )
+                Nothing ->
+                    ( model, Cmd.none )
+
+        PostReceived result ->
+            case result of
+                Ok response -> ( { model | state = RequestSuccess response }, Cmd.none )
+                Err _ ->  ( { model | state = RequestFailure }, Cmd.none )
+
+        ClearSearch ->
+            ( initialModel, Cmd.none )
 
 
-view : Model -> Html Msg
-view model =
-    case model.state of
-        Searching ->
-            viewSearching model
-
-        Found ->
-            viewFound model
-
-
-viewSearching : Model -> Html Msg
-viewSearching model =
-    div [ class "dropdown" ]
-        [ dropdownHead
-        , dropdownBody model
-        ]
-
-
-viewFound : Model -> Html Msg
-viewFound model =
-    div [ class "dropdown" ]
-        [ dropdownHead
-        , dropdownBody model
-        , maybeItemFound model.selected
-        ]
-
-
-dropdownHead : Html Msg
-dropdownHead =
-    p [] [ text "Search for a Tap In!" ]
-
-dropdownItem : String -> Html Msg
-dropdownItem value =
-    li [ onClick (ItemSelected value) ] [ text value ]
-
-dropdownBody : Model -> Html Msg
-dropdownBody model =
-    div [ class "dropdown-body" ]
-        [ input [ id "search-box", onInput SearchInput ] []
-        , ul [] (List.map dropdownItem (filteredValues model))
-        ]
-
-itemFound: String -> Html Msg
-itemFound item =
-    div [ class "item-found"] [text item]
-
-maybeItemFound: Maybe String -> Html Msg
-maybeItemFound item =
-    case item of
-        Nothing -> itemFound ""
-
-        Just str -> itemFound str
-
-
-filteredValues : Model -> List String
-filteredValues model =
-    List.filter (\v -> matchQuery model.query v) model.values
-
-
-matchQuery : String -> String -> Bool
-matchQuery needle haystack =
-    String.contains (String.toLower needle) (String.toLower haystack)
+-- HTTP
 
 type alias Request =
     { titles: List String
     , direction: String
     }
 
-type alias Response =
-    { titles : List String
-    , related_pages : List String
+post : Request -> Cmd Msg
+post request =
+  Http.post
+    { url = "https://am121f9ih9.execute-api.us-west-2.amazonaws.com/default/v1/tap-in"
+    , body = Http.jsonBody (requestEncoder request)
+    , expect = Http.expectJson PostReceived responseDecoder
     }
 
 requestEncoder: Request -> Encode.Value
@@ -146,34 +112,69 @@ buildRequest : String -> Request
 buildRequest selected =
     Request [selected] "in"
 
-post : Request -> Cmd Msg
-post request =
-  Http.post
-    { url = "https://am121f9ih9.execute-api.us-west-2.amazonaws.com/default/v1/tap-in"
-    , body = Http.jsonBody (requestEncoder request)
-    , expect = Http.expectJson PostReceived responseDecoder
-    }
-
-type Msg
-    = SearchAgain
-    | ItemSelected String
-    | PostReceived (Result Http.Error Response)
-    | SearchInput String
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case msg of
-        SearchAgain ->
-            ( { model | state = Searching }, Cmd.none )
+-- VIEW
 
-        SearchInput query ->
-            ( { model | query = query, selected = Nothing }, Cmd.none )
+view : Model -> Html Msg
+view model =
+    case model.state of
+        BuildingRequest ->
+            viewBuildingRequest
 
-        ItemSelected value ->
-            ( { model | selected = Just value, state = Found, query = "" }
-            , post (buildRequest value)
-            )
+        RequestSuccess response ->
+            viewRequestSuccess response
+
+        RequestFailure ->
+            viewRequestFailure
+
+viewBuildingRequest : Html Msg
+viewBuildingRequest =
+    div [ class "dropdown" ]
+    [ dropdownHead
+    , dropdownBody
+    ]
+
+viewRequestSuccess : Response -> Html Msg
+viewRequestSuccess response =
+    div [ class "dropdown" ]
+        [ dropdownHead
+        , dropdownBody
+        , viewResponse response
+        ]
+
+viewRequestFailure : Html Msg
+viewRequestFailure =
+    button [ class "dropdown", onClick ClearSearch ]
+    [ text "Bad Request, Try Again!" ]
 
 
+dropdownHead : Html Msg
+dropdownHead =
+    p [class "header"] [ text "Search for a Tap In!" ]
 
+dropdownBody : Html Msg
+dropdownBody =
+    div [ class "dropdown-body" ]
+        [ input [ class "search-box", onInput SearchInput ] []
+        , makeRequestButton
+         ]
+
+makeRequestButton : Html Msg
+makeRequestButton =
+    button [ class "button", onClick MakeRequest ] [ text "Make Request!" ]
+
+viewResponse: Response -> Html Msg
+viewResponse response =
+    ul [ class "response" ]
+    [ ul [] ([text "titles:"] ++ (responseItems response.titles))
+    , ul [] ([text "related pages:"] ++ (responseItems response.related_pages))
+    ]
+
+responseItems: List String -> List (Html Msg)
+responseItems items =
+    List.map (responseItem) items
+
+responseItem: String -> Html Msg
+responseItem item =
+    li [] [text item]
