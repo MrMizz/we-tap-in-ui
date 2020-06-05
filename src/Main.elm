@@ -31,7 +31,7 @@ type alias Model =
 type State
     = BuildingRequest
     | RequestSuccess Response
-    | RequestFailure
+    | RequestFailure Http.Error
 
 type alias Response =
     { titles : List String
@@ -74,10 +74,11 @@ update msg model =
         PostReceived result ->
             case result of
                 Ok response -> ( { model | state = RequestSuccess response }, Cmd.none )
-                Err _ ->  ( { model | state = RequestFailure }, Cmd.none )
+                Err error->  ( { model | state = RequestFailure error }, Cmd.none )
 
         ClearSearch ->
             ( initialModel, Cmd.none )
+
 
 
 -- HTTP
@@ -89,11 +90,27 @@ type alias Request =
 
 post : Request -> Cmd Msg
 post request =
-  Http.post
-    { url = "https://am121f9ih9.execute-api.us-west-2.amazonaws.com/default/v1/tap-in"
+  Http.request
+    { method = "POST"
+    , headers = headers
+    , url = "https://am121f9ih9.execute-api.us-west-2.amazonaws.com/default/v1/tap-in"
     , body = Http.jsonBody (requestEncoder request)
     , expect = Http.expectJson PostReceived responseDecoder
+    , timeout = Nothing
+    , tracker = Nothing
     }
+
+headers: List Http.Header
+headers =
+    [ Http.header "Access-Control-Allow-Origin" "*"
+    , Http.header "Access-Control-Allow-Credentials" "false"
+    , Http.header "Access-Control-Allow-Methods" "GET,HEAD,OPTIONS,POST,PUT"
+    , Http.header "Access-Control-Allow-Headers" bigAssHeaderParam
+    ]
+
+bigAssHeaderParam : String
+bigAssHeaderParam =
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
 
 requestEncoder: Request -> Encode.Value
 requestEncoder request=
@@ -125,8 +142,8 @@ view model =
         RequestSuccess response ->
             viewRequestSuccess response
 
-        RequestFailure ->
-            viewRequestFailure
+        RequestFailure error ->
+            viewRequestFailure error
 
 viewBuildingRequest : Html Msg
 viewBuildingRequest =
@@ -143,11 +160,28 @@ viewRequestSuccess response =
         , viewResponse response
         ]
 
-viewRequestFailure : Html Msg
-viewRequestFailure =
-    button [ class "dropdown", onClick ClearSearch ]
-    [ text "Bad Request, Try Again!" ]
+viewRequestFailure : Http.Error -> Html Msg
+viewRequestFailure error  =
+    case error of
+        Http.BadUrl string ->
+            button [ class "dropdown", onClick ClearSearch ]
+            [ text ("Bad Url: " ++ string ++ "\nTry Again!") ]
 
+        Http.Timeout ->
+            button [ class "dropdown", onClick ClearSearch ]
+            [ text "Server Timeout, Try Again!" ]
+
+        Http.NetworkError ->
+            button [ class "dropdown", onClick ClearSearch ]
+            [ text "Network Error, Try Again!" ]
+
+        Http.BadStatus int ->
+            button [ class "dropdown", onClick ClearSearch ]
+            [ text  ((String.fromInt int) ++ ", Try Again!") ]
+
+        Http.BadBody body ->
+            button [ class "dropdown", onClick ClearSearch ]
+            [ text ("Bad Body: " ++ body ++ "\nTry Again!") ]
 
 dropdownHead : Html Msg
 dropdownHead =
