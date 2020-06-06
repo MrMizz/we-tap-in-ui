@@ -85,38 +85,22 @@ update msg model =
 
 type alias Request =
     { titles: List String
-    , direction: String
+    , query: String
     }
 
 post : Request -> Cmd Msg
 post request =
-  Http.request
-    { method = "POST"
-    , headers = headers
-    , url = "https://am121f9ih9.execute-api.us-west-2.amazonaws.com/default/v1/tap-in"
+  Http.post
+  { url = "https://am121f9ih9.execute-api.us-west-2.amazonaws.com/default/v1/tap-in"
     , body = Http.jsonBody (requestEncoder request)
     , expect = Http.expectJson PostReceived responseDecoder
-    , timeout = Nothing
-    , tracker = Nothing
     }
-
-headers: List Http.Header
-headers =
-    [ Http.header "Access-Control-Allow-Origin" "*"
-    , Http.header "Access-Control-Allow-Credentials" "false"
-    , Http.header "Access-Control-Allow-Methods" "GET,HEAD,OPTIONS,POST,PUT"
-    , Http.header "Access-Control-Allow-Headers" bigAssHeaderParam
-    ]
-
-bigAssHeaderParam : String
-bigAssHeaderParam =
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
 
 requestEncoder: Request -> Encode.Value
 requestEncoder request=
     Encode.object
         [ ( "titles", Encode.list Encode.string request.titles )
-        , ( "direction", Encode.string request.direction )
+        , ( "query", Encode.string request.query )
         ]
 
 responseDecoder: Decode.Decoder Response
