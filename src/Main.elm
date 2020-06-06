@@ -103,7 +103,7 @@ updateWithRequest model msg =
             ( { model | state = Loading }, post (msg query) )
 
         Nothing ->
-            ( { model | state = Loading }, Cmd.none )
+            ( { model | state = BuildingRequest }, Cmd.none )
 
 
 
@@ -149,13 +149,6 @@ buildRequestOutDirection : String -> Request
 buildRequestOutDirection selected =
     Request [ selected ] "out"
 
-buildLoading : Direction -> String -> Request
-buildLoading direction selected =
-    case direction of
-        In -> buildRequestInDirection selected
-
-        Out -> buildRequestOutDirection selected
-
 
 
 
@@ -198,6 +191,7 @@ viewRequestSuccess response =
         [ dropdownHead
         , dropdownBody
         , clearSearchButton "Clear Search"
+        , viewTitlesSearched response.titles
         , viewResponse response
         ]
 
@@ -206,7 +200,7 @@ viewRequestFailure : Http.Error -> Html Msg
 viewRequestFailure error =
     case error of
         Http.BadUrl string ->
-            clearSearchButton ("Bad Url: " ++ string ++ "\nTry Again!")
+            clearSearchButton ("Bad Url: " ++ string ++ ", Try Again!")
 
         Http.Timeout ->
             clearSearchButton "Server Timeout, Try Again!"
@@ -218,12 +212,12 @@ viewRequestFailure error =
             clearSearchButton (String.fromInt int ++ " Error: Bad Title Input, Try Again!")
 
         Http.BadBody body ->
-            clearSearchButton ("Bad Body: " ++ body ++ "\nTry Again!")
+            clearSearchButton ("Bad Body: " ++ body ++ ", Try Again!")
 
 
 dropdownHead : Html Msg
 dropdownHead =
-    p [ class "header" ] [ text "Search for a Tap In!" ]
+    p [ class "header" ] [ text "Search For A Tap In!" ]
 
 
 dropdownBody : Html Msg
@@ -243,6 +237,10 @@ makeRequestOutDirectionButton : Html Msg
 makeRequestOutDirectionButton =
     button [ class "button", onClick (RequestMade Out) ] [ text "out" ]
 
+viewTitlesSearched : List String -> Html Msg
+viewTitlesSearched titles =
+    ul [ class "dropdown" ] ( [ text "Titles Searched: "] ++ List.map fromTitleToUrlHtml titles )
+
 viewResponse : Response -> Html Msg
 viewResponse response =
     ul [ class "response" ]
@@ -256,13 +254,7 @@ clearSearchButton string =
 
 responseItems : List String -> List (Html Msg)
 responseItems items =
-    List.map responseItem items
-
-
-responseItem : String -> Html Msg
-responseItem item =
-    li [] [ a [ Html.Attributes.href (fromTitleToUrl item) ] [ text item ] ]
-
+    List.map fromTitleToUrlHtml items
 
 cleanTitle : String -> String
 cleanTitle title =
@@ -278,3 +270,8 @@ fromTitleToUrl title =
                 |> cleanTitle
                 |> String.replace " " "_"
            )
+
+
+fromTitleToUrlHtml : String -> Html Msg
+fromTitleToUrlHtml title =
+    li [] [ a [ Html.Attributes.href (fromTitleToUrl title) ] [ text title ] ]
