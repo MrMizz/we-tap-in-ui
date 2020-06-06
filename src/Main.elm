@@ -281,4 +281,4 @@ fromTitleToUrl title =
 
 fromTitleToUrlHtml : String -> Html Msg
 fromTitleToUrlHtml title =
-    li [] [ a [ Html.Attributes.href (fromTitleToUrl title) ] [ text title ] ]
+    li [] [ a [ Html.Attributes.target "_blank", Html.Attributes.href (fromTitleToUrl title) ] [ text title ] ]
