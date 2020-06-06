@@ -76,20 +76,10 @@ update msg model =
             ( { model | query = Just query }, Cmd.none )
 
         MakeRequestInDirection ->
-            case model.query of
-                Just query ->
-                    ( model, post (buildRequestInDirection query) )
-
-                Nothing ->
-                    ( model, Cmd.none )
+            updateWithRequest model buildRequestInDirection
 
         MakeRequestOutDirection ->
-            case model.query of
-                Just query ->
-                    ( model, post (buildRequestOutDirection query) )
-
-                Nothing ->
-                    ( model, Cmd.none )
+            updateWithRequest model buildRequestOutDirection
 
         PostReceived result ->
             case result of
@@ -101,6 +91,15 @@ update msg model =
 
         ClearSearch ->
             ( initialModel, Cmd.none )
+
+updateWithRequest : { a | query : Maybe b } -> (b -> Request) -> ({ a | query : Maybe b }, Cmd Msg)
+updateWithRequest model msg =
+    case model.query of
+        Just query ->
+            ( model, post (msg query) )
+
+        Nothing ->
+            ( model, Cmd.none )
 
 
 
@@ -197,7 +196,7 @@ viewRequestFailure error =
 
         Http.BadStatus int ->
             button [ class "dropdown", onClick ClearSearch ]
-                [ text (String.fromInt int ++ ", Try Again!") ]
+                [ text (String.fromInt int ++ " Error: Bad Title Input, Try Again!") ]
 
         Http.BadBody body ->
             button [ class "dropdown", onClick ClearSearch ]
@@ -240,4 +239,17 @@ responseItems items =
 
 responseItem : String -> Html Msg
 responseItem item =
-    li [] [ text item ]
+    li [] [ a [Html.Attributes.href (fromTitleToUrl item) ] [ text item ] ]
+
+cleanTitle : String -> String
+cleanTitle title =
+    title
+        |> String.replace "[" ""
+        |> String.replace "]" ""
+
+fromTitleToUrl : String -> String
+fromTitleToUrl title =
+    "https://en.wikipedia.org/wiki/" ++ ( title
+        |> cleanTitle
+        |> String.replace " " "_"
+        )
