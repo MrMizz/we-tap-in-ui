@@ -92,7 +92,8 @@ update msg model =
         ClearSearch ->
             ( initialModel, Cmd.none )
 
-updateWithRequest : { a | query : Maybe b } -> (b -> Request) -> ({ a | query : Maybe b }, Cmd Msg)
+
+updateWithRequest : { a | query : Maybe b } -> (b -> Request) -> ( { a | query : Maybe b }, Cmd Msg )
 updateWithRequest model msg =
     case model.query of
         Just query ->
@@ -139,6 +140,7 @@ responseDecoder =
 buildRequestInDirection : String -> Request
 buildRequestInDirection selected =
     Request [ selected ] "in"
+
 
 buildRequestOutDirection : String -> Request
 buildRequestOutDirection selected =
@@ -221,6 +223,7 @@ makeRequestInDirectionButton : Html Msg
 makeRequestInDirectionButton =
     button [ class "button", onClick MakeRequestInDirection ] [ text "In" ]
 
+
 makeRequestOutDirectionButton : Html Msg
 makeRequestOutDirectionButton =
     button [ class "button", onClick MakeRequestOutDirection ] [ text "Out" ]
@@ -239,7 +242,8 @@ responseItems items =
 
 responseItem : String -> Html Msg
 responseItem item =
-    li [] [ a [Html.Attributes.href (fromTitleToUrl item) ] [ text item ] ]
+    li [] [ a [ Html.Attributes.href (fromTitleToUrl item) ] [ text item ] ]
+
 
 cleanTitle : String -> String
 cleanTitle title =
@@ -247,9 +251,11 @@ cleanTitle title =
         |> String.replace "[" ""
         |> String.replace "]" ""
 
+
 fromTitleToUrl : String -> String
 fromTitleToUrl title =
-    "https://en.wikipedia.org/wiki/" ++ ( title
-        |> cleanTitle
-        |> String.replace " " "_"
-        )
+    "https://en.wikipedia.org/wiki/"
+        ++ (title
+                |> cleanTitle
+                |> String.replace " " "_"
+           )
