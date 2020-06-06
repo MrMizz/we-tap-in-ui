@@ -35,6 +35,7 @@ type alias Model =
 
 type State
     = BuildingRequest
+    | Loading
     | RequestSuccess Response
     | RequestFailure Http.Error
 
@@ -63,11 +64,13 @@ init _ =
 
 type Msg
     = SearchInput String
-    | MakeRequestInDirection
-    | MakeRequestOutDirection
+    | RequestMade Direction
     | PostReceived (Result Http.Error Response)
     | ClearSearch
 
+type Direction
+    = In
+    | Out
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -75,32 +78,32 @@ update msg model =
         SearchInput query ->
             ( { model | query = Just query }, Cmd.none )
 
-        MakeRequestInDirection ->
-            updateWithRequest model buildRequestInDirection
-
-        MakeRequestOutDirection ->
-            updateWithRequest model buildRequestOutDirection
+        RequestMade direction ->
+            case direction of
+                In ->
+                    updateWithRequest model buildRequestInDirection
+                Out ->
+                    updateWithRequest model buildRequestOutDirection
 
         PostReceived result ->
             case result of
                 Ok response ->
-                    ( { model | state = RequestSuccess response }, Cmd.none )
+                    ( { model | state = (RequestSuccess response) }, Cmd.none )
 
                 Err error ->
-                    ( { model | state = RequestFailure error }, Cmd.none )
+                    ( { model | state = (RequestFailure error) }, Cmd.none )
 
         ClearSearch ->
             ( initialModel, Cmd.none )
 
-
-updateWithRequest : { a | query : Maybe b } -> (b -> Request) -> ( { a | query : Maybe b }, Cmd Msg )
+updateWithRequest : { a | query : Maybe b, state : State } -> (b -> Request) -> ({ a | query : Maybe b, state : State }, Cmd Msg)
 updateWithRequest model msg =
     case model.query of
         Just query ->
-            ( model, post (msg query) )
+            ( { model | state = Loading }, post (msg query) )
 
         Nothing ->
-            ( model, Cmd.none )
+            ( { model | state = Loading }, Cmd.none )
 
 
 
@@ -146,6 +149,15 @@ buildRequestOutDirection : String -> Request
 buildRequestOutDirection selected =
     Request [ selected ] "out"
 
+buildLoading : Direction -> String -> Request
+buildLoading direction selected =
+    case direction of
+        In -> buildRequestInDirection selected
+
+        Out -> buildRequestOutDirection selected
+
+
+
 
 
 -- VIEW
@@ -156,6 +168,9 @@ view model =
     case model.state of
         BuildingRequest ->
             viewBuildingRequest
+
+        Loading ->
+            viewLoading
 
         RequestSuccess response ->
             viewRequestSuccess response
@@ -172,11 +187,17 @@ viewBuildingRequest =
         ]
 
 
+viewLoading : Html Msg
+viewLoading =
+    div [ class "dropdown" ] [ text "Loading . . ."]
+
+
 viewRequestSuccess : Response -> Html Msg
 viewRequestSuccess response =
     div [ class "dropdown" ]
         [ dropdownHead
         , dropdownBody
+        , clearSearchButton "Clear Search"
         , viewResponse response
         ]
 
@@ -185,24 +206,19 @@ viewRequestFailure : Http.Error -> Html Msg
 viewRequestFailure error =
     case error of
         Http.BadUrl string ->
-            button [ class "dropdown", onClick ClearSearch ]
-                [ text ("Bad Url: " ++ string ++ "\nTry Again!") ]
+            clearSearchButton ("Bad Url: " ++ string ++ "\nTry Again!")
 
         Http.Timeout ->
-            button [ class "dropdown", onClick ClearSearch ]
-                [ text "Server Timeout, Try Again!" ]
+            clearSearchButton "Server Timeout, Try Again!"
 
         Http.NetworkError ->
-            button [ class "dropdown", onClick ClearSearch ]
-                [ text "Network Error, Try Again!" ]
+            clearSearchButton "Network Error, Try Again!"
 
         Http.BadStatus int ->
-            button [ class "dropdown", onClick ClearSearch ]
-                [ text (String.fromInt int ++ " Error: Bad Title Input, Try Again!") ]
+            clearSearchButton (String.fromInt int ++ " Error: Bad Title Input, Try Again!")
 
         Http.BadBody body ->
-            button [ class "dropdown", onClick ClearSearch ]
-                [ text ("Bad Body: " ++ body ++ "\nTry Again!") ]
+            clearSearchButton ("Bad Body: " ++ body ++ "\nTry Again!")
 
 
 dropdownHead : Html Msg
@@ -221,18 +237,21 @@ dropdownBody =
 
 makeRequestInDirectionButton : Html Msg
 makeRequestInDirectionButton =
-    button [ class "button", onClick MakeRequestInDirection ] [ text "In" ]
-
+    button [ class "button", onClick (RequestMade In) ] [ text "in" ]
 
 makeRequestOutDirectionButton : Html Msg
 makeRequestOutDirectionButton =
-    button [ class "button", onClick MakeRequestOutDirection ] [ text "Out" ]
-
+    button [ class "button", onClick (RequestMade Out) ] [ text "out" ]
 
 viewResponse : Response -> Html Msg
 viewResponse response =
     ul [ class "response" ]
         [ ul [] ([ text "Related Pages:" ] ++ responseItems response.related_pages) ]
+
+clearSearchButton : String -> Html Msg
+clearSearchButton string =
+    button [ class "dropdown", onClick ClearSearch ]
+        [ text string ]
 
 
 responseItems : List String -> List (Html Msg)
