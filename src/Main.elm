@@ -68,9 +68,11 @@ type Msg
     | PostReceived (Result Http.Error Response)
     | ClearSearch
 
+
 type Direction
     = In
     | Out
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -82,21 +84,23 @@ update msg model =
             case direction of
                 In ->
                     updateWithRequest model buildRequestInDirection
+
                 Out ->
                     updateWithRequest model buildRequestOutDirection
 
         PostReceived result ->
             case result of
                 Ok response ->
-                    ( { model | state = (RequestSuccess response) }, Cmd.none )
+                    ( { model | state = RequestSuccess response }, Cmd.none )
 
                 Err error ->
-                    ( { model | state = (RequestFailure error) }, Cmd.none )
+                    ( { model | state = RequestFailure error }, Cmd.none )
 
         ClearSearch ->
             ( initialModel, Cmd.none )
 
-updateWithRequest : { a | query : Maybe b, state : State } -> (b -> Request) -> ({ a | query : Maybe b, state : State }, Cmd Msg)
+
+updateWithRequest : { a | query : Maybe b, state : State } -> (b -> Request) -> ( { a | query : Maybe b, state : State }, Cmd Msg )
 updateWithRequest model msg =
     case model.query of
         Just query ->
@@ -151,8 +155,6 @@ buildRequestOutDirection selected =
 
 
 
-
-
 -- VIEW
 
 
@@ -182,7 +184,7 @@ viewBuildingRequest =
 
 viewLoading : Html Msg
 viewLoading =
-    div [ class "dropdown" ] [ text "Loading . . ."]
+    div [ class "dropdown" ] [ text "Loading . . ." ]
 
 
 viewRequestSuccess : Response -> Html Msg
@@ -233,18 +235,22 @@ makeRequestInDirectionButton : Html Msg
 makeRequestInDirectionButton =
     button [ class "button", onClick (RequestMade In) ] [ text "in" ]
 
+
 makeRequestOutDirectionButton : Html Msg
 makeRequestOutDirectionButton =
     button [ class "button", onClick (RequestMade Out) ] [ text "out" ]
 
+
 viewTitlesSearched : List String -> Html Msg
 viewTitlesSearched titles =
-    ul [ class "dropdown" ] ( [ text "Titles Searched: "] ++ List.map fromTitleToUrlHtml titles )
+    ul [ class "dropdown" ] ([ text "Titles Searched: " ] ++ List.map fromTitleToUrlHtml titles)
+
 
 viewResponse : Response -> Html Msg
 viewResponse response =
     ul [ class "response" ]
         [ ul [] ([ text "Related Pages:" ] ++ responseItems response.related_pages) ]
+
 
 clearSearchButton : String -> Html Msg
 clearSearchButton string =
@@ -255,6 +261,7 @@ clearSearchButton string =
 responseItems : List String -> List (Html Msg)
 responseItems items =
     List.map fromTitleToUrlHtml items
+
 
 cleanTitle : String -> String
 cleanTitle title =
