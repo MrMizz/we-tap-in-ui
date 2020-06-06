@@ -63,7 +63,8 @@ init _ =
 
 type Msg
     = SearchInput String
-    | MakeRequest
+    | MakeRequestInDirection
+    | MakeRequestOutDirection
     | PostReceived (Result Http.Error Response)
     | ClearSearch
 
@@ -74,10 +75,18 @@ update msg model =
         SearchInput query ->
             ( { model | query = Just query }, Cmd.none )
 
-        MakeRequest ->
+        MakeRequestInDirection ->
             case model.query of
                 Just query ->
-                    ( model, post (buildRequest query) )
+                    ( model, post (buildRequestInDirection query) )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        MakeRequestOutDirection ->
+            case model.query of
+                Just query ->
+                    ( model, post (buildRequestOutDirection query) )
 
                 Nothing ->
                     ( model, Cmd.none )
@@ -128,9 +137,13 @@ responseDecoder =
         (Decode.field "related_pages" (Decode.list Decode.string))
 
 
-buildRequest : String -> Request
-buildRequest selected =
+buildRequestInDirection : String -> Request
+buildRequestInDirection selected =
     Request [ selected ] "in"
+
+buildRequestOutDirection : String -> Request
+buildRequestOutDirection selected =
+    Request [ selected ] "out"
 
 
 
@@ -200,13 +213,18 @@ dropdownBody : Html Msg
 dropdownBody =
     div [ class "dropdown-body" ]
         [ input [ class "search-box", onInput SearchInput ] []
-        , makeRequestButton
+        , makeRequestInDirectionButton
+        , makeRequestOutDirectionButton
         ]
 
 
-makeRequestButton : Html Msg
-makeRequestButton =
-    button [ class "button", onClick MakeRequest ] [ text "Make Request!" ]
+makeRequestInDirectionButton : Html Msg
+makeRequestInDirectionButton =
+    button [ class "button", onClick MakeRequestInDirection ] [ text "In" ]
+
+makeRequestOutDirectionButton : Html Msg
+makeRequestOutDirectionButton =
+    button [ class "button", onClick MakeRequestOutDirection ] [ text "Out" ]
 
 
 viewResponse : Response -> Html Msg
