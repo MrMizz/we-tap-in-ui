@@ -30,6 +30,7 @@ main =
 type alias Model =
     { state : State
     , query : Maybe String
+    , rank : Int
     }
 
 
@@ -50,6 +51,7 @@ initialModel : Model
 initialModel =
     { state = BuildingRequest
     , query = Nothing
+    , rank = 1
     }
 
 
@@ -199,7 +201,7 @@ viewRequestSuccess response direction =
     div [ class "dropdown" ]
         [ dropdownHead
         , dropdownBody
-        , clearSearchButton "Clear Search"
+        , almostClearSearchButton [ text "Clear Search" ]
         , viewTitlesSearched response.titles
         , viewDirectedResponse response direction
         ]
@@ -209,19 +211,19 @@ viewRequestFailure : Http.Error -> Html Msg
 viewRequestFailure error =
     case error of
         Http.BadUrl string ->
-            clearSearchButton ("Bad Url: " ++ string ++ ", Try Again!")
+            almostClearSearchButton [ text ("Bad Url: " ++ string ++ ", Try Again!") ]
 
         Http.Timeout ->
-            clearSearchButton "Server Timeout, Try Again!"
+            almostClearSearchButton [ text "Server Timeout, Try Again!" ]
 
         Http.NetworkError ->
-            clearSearchButton "Network Error, Try Again!"
+            almostClearSearchButton [ text "Network Error, Try Again!" ]
 
         Http.BadStatus int ->
-            clearSearchButton (String.fromInt int ++ " Error: Bad Title Input, Try Again!")
+            almostClearSearchButton [ text (String.fromInt int ++ " Error: Bad Title Input, Try Again!") ]
 
         Http.BadBody body ->
-            clearSearchButton ("Bad Body: " ++ body ++ ", Try Again!")
+            almostClearSearchButton [ text ("Bad Body: " ++ body ++ ", Try Again!") ]
 
 
 dropdownHead : Html Msg
@@ -269,10 +271,9 @@ viewResponse response textToDisplay =
         [ ul [] ([ text textToDisplay ] ++ responseItems response.related_pages) ]
 
 
-clearSearchButton : String -> Html Msg
-clearSearchButton string =
+almostClearSearchButton : List (Html Msg) -> Html Msg
+almostClearSearchButton =
     button [ class "dropdown", onClick ClearSearch ]
-        [ text string ]
 
 
 responseItems : List String -> List (Html Msg)
