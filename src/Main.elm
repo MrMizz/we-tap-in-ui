@@ -36,7 +36,7 @@ type alias Model =
 type State
     = BuildingRequest
     | Loading
-    | RequestSuccess Response
+    | RequestSuccess Response Direction
     | RequestFailure Http.Error
 
 
@@ -65,7 +65,8 @@ init _ =
 type Msg
     = SearchInput String
     | RequestMade Direction
-    | PostReceived (Result Http.Error Response)
+    | PostReceivedIn (Result Http.Error Response)
+    | PostReceivedOut (Result Http.Error Response)
     | ClearSearch
 
 
@@ -83,33 +84,36 @@ update msg model =
         RequestMade direction ->
             case direction of
                 In ->
-                    updateWithRequest model buildRequestInDirection
+                    updateWithRequest model buildRequestInDirection PostReceivedIn
 
                 Out ->
-                    updateWithRequest model buildRequestOutDirection
+                    updateWithRequest model buildRequestOutDirection PostReceivedOut
 
-        PostReceived result ->
-            case result of
-                Ok response ->
-                    ( { model | state = RequestSuccess response }, Cmd.none )
+        PostReceivedIn result ->
+            updateWithResponse model result In
 
-                Err error ->
-                    ( { model | state = RequestFailure error }, Cmd.none )
+        PostReceivedOut result ->
+            updateWithResponse model result Out
 
         ClearSearch ->
             ( initialModel, Cmd.none )
 
 
-updateWithRequest : { a | query : Maybe b, state : State } -> (b -> Request) -> ( { a | query : Maybe b, state : State }, Cmd Msg )
-updateWithRequest model msg =
+updateWithRequest model buildRequest toMsg =
     case model.query of
         Just query ->
-            ( { model | state = Loading }, post (msg query) )
+            ( { model | state = Loading }, post (buildRequest query) toMsg )
 
         Nothing ->
             ( { model | state = BuildingRequest }, Cmd.none )
 
+updateWithResponse model result direction =
+    case result of
+        Ok response ->
+            ( { model | state = RequestSuccess response direction }, Cmd.none )
 
+        Err error ->
+            ( { model | state = RequestFailure error }, Cmd.none )
 
 -- HTTP
 
@@ -120,12 +124,12 @@ type alias Request =
     }
 
 
-post : Request -> Cmd Msg
-post request =
+post : Request -> (Result Http.Error Response -> msg) -> Cmd msg
+post request msg=
     Http.post
         { url = "https://am121f9ih9.execute-api.us-west-2.amazonaws.com/default/v1/tap-in"
         , body = Http.jsonBody (requestEncoder request)
-        , expect = Http.expectJson PostReceived responseDecoder
+        , expect = Http.expectJson msg responseDecoder
         }
 
 
@@ -167,8 +171,8 @@ view model =
         Loading ->
             viewLoading
 
-        RequestSuccess response ->
-            viewRequestSuccess response
+        RequestSuccess response direction ->
+            viewRequestSuccess response direction
 
         RequestFailure error ->
             viewRequestFailure error
@@ -187,14 +191,14 @@ viewLoading =
     div [ class "dropdown" ] [ text "Loading . . ." ]
 
 
-viewRequestSuccess : Response -> Html Msg
-viewRequestSuccess response =
+viewRequestSuccess : Response -> Direction -> Html Msg
+viewRequestSuccess response direction =
     div [ class "dropdown" ]
         [ dropdownHead
         , dropdownBody
         , clearSearchButton "Clear Search"
         , viewTitlesSearched response.titles
-        , viewResponse response
+        , viewResponse response direction
         ]
 
 
@@ -246,10 +250,16 @@ viewTitlesSearched titles =
     ul [ class "dropdown" ] ([ text "Titles Searched: " ] ++ List.map fromTitleToUrlHtml titles)
 
 
-viewResponse : Response -> Html Msg
-viewResponse response =
-    ul [ class "response" ]
-        [ ul [] ([ text "Related Pages:" ] ++ responseItems response.related_pages) ]
+viewResponse : Response -> Direction -> Html Msg
+viewResponse response direction =
+    case direction of
+        In ->
+            ul [ class "response" ]
+            [ ul [] ([ text "Direction: In" ] ++ responseItems response.related_pages) ]
+
+        Out ->
+            ul [ class "response" ]
+            [ ul [] ([ text "Direction: Out" ] ++ responseItems response.related_pages) ]
 
 
 clearSearchButton : String -> Html Msg
