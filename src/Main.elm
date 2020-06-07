@@ -198,7 +198,7 @@ viewRequestSuccess response direction =
         , dropdownBody
         , clearSearchButton "Clear Search"
         , viewTitlesSearched response.titles
-        , viewResponse response direction
+        , viewDirectedResponse response direction
         ]
 
 
@@ -250,17 +250,19 @@ viewTitlesSearched titles =
     ul [ class "dropdown" ] ([ text "Titles Searched: " ] ++ List.map fromTitleToUrlHtml titles)
 
 
-viewResponse : Response -> Direction -> Html Msg
-viewResponse response direction =
+viewDirectedResponse : Response -> Direction -> Html Msg
+viewDirectedResponse response direction =
     case direction of
         In ->
-            ul [ class "response" ]
-            [ ul [] ([ text "Direction: In" ] ++ responseItems response.related_pages) ]
+            viewResponse response "Direction: In"
 
         Out ->
-            ul [ class "response" ]
-            [ ul [] ([ text "Direction: Out" ] ++ responseItems response.related_pages) ]
+            viewResponse response "Direction: Out"
 
+viewResponse : Response -> String -> Html Msg
+viewResponse response textToDisplay =
+    ul [ class "response" ]
+    [ ul [] ([ text textToDisplay ] ++ responseItems response.related_pages) ]
 
 clearSearchButton : String -> Html Msg
 clearSearchButton string =
