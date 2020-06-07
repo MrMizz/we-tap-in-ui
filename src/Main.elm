@@ -107,6 +107,7 @@ updateWithRequest model buildRequest toMsg =
         Nothing ->
             ( { model | state = BuildingRequest }, Cmd.none )
 
+
 updateWithResponse model result direction =
     case result of
         Ok response ->
@@ -114,6 +115,8 @@ updateWithResponse model result direction =
 
         Err error ->
             ( { model | state = RequestFailure error }, Cmd.none )
+
+
 
 -- HTTP
 
@@ -125,7 +128,7 @@ type alias Request =
 
 
 post : Request -> (Result Http.Error Response -> msg) -> Cmd msg
-post request msg=
+post request msg =
     Http.post
         { url = "https://am121f9ih9.execute-api.us-west-2.amazonaws.com/default/v1/tap-in"
         , body = Http.jsonBody (requestEncoder request)
@@ -259,10 +262,12 @@ viewDirectedResponse response direction =
         Out ->
             viewResponse response "Direction: Out"
 
+
 viewResponse : Response -> String -> Html Msg
 viewResponse response textToDisplay =
     ul [ class "response" ]
-    [ ul [] ([ text textToDisplay ] ++ responseItems response.related_pages) ]
+        [ ul [] ([ text textToDisplay ] ++ responseItems response.related_pages) ]
+
 
 clearSearchButton : String -> Html Msg
 clearSearchButton string =
