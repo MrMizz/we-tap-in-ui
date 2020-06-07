@@ -30,12 +30,14 @@ main =
 type alias Model =
     { state : State
     , query : Maybe String
+    , selected : List String
     , rank : Int
     }
 
 
 type State
     = BuildingRequest
+    | SearchConfirmed
     | Loading
     | RequestSuccess Response Direction
     | RequestFailure Http.Error
@@ -51,6 +53,7 @@ initialModel : Model
 initialModel =
     { state = BuildingRequest
     , query = Nothing
+    , selected = []
     , rank = 1
     }
 
@@ -70,6 +73,8 @@ type Msg
     | PostReceivedIn (Result Http.Error Response)
     | PostReceivedOut (Result Http.Error Response)
     | ClearSearch
+    | AddSearch
+    | ConfirmSearch String
 
 
 type Direction
@@ -99,6 +104,12 @@ update msg model =
 
         ClearSearch ->
             ( initialModel, Cmd.none )
+
+        AddSearch ->
+            ( { model | rank = model.rank + 1 }, Cmd.none )
+
+        ConfirmSearch title ->
+            ( { model | state = SearchConfirmed, selected = (model.selected ++ [title]) }, Cmd.none )
 
 
 updateWithRequest model buildRequest toMsg =
@@ -171,7 +182,10 @@ view : Model -> Html Msg
 view model =
     case model.state of
         BuildingRequest ->
-            viewBuildingRequest
+            viewBuildingRequest model
+
+        SearchConfirmed ->
+            viewSearchConfirmed
 
         Loading ->
             viewLoading
@@ -182,14 +196,21 @@ view model =
         RequestFailure error ->
             viewRequestFailure error
 
-
-viewBuildingRequest : Html Msg
-viewBuildingRequest =
+viewSearchConfirmed : Html Msg
+viewSearchConfirmed =
     div [ class "dropdown" ]
-        [ dropdownHead
-        , dropdownBody
-        ]
+        [(dropDownHeadAndBody [makeRequestInDirectionButton, makeRequestOutDirectionButton])]
 
+viewBuildingRequest : Model -> Html Msg
+viewBuildingRequest model =
+    case model.query of
+        Nothing ->
+            div [ class "dropdown" ]
+                [(dropDownHeadAndBody [])]
+
+        Just title ->
+            div [ class "dropdown" ]
+                [(dropDownHeadAndBody [confirmSearchButton title])]
 
 viewLoading : Html Msg
 viewLoading =
@@ -200,7 +221,7 @@ viewRequestSuccess : Response -> Direction -> Html Msg
 viewRequestSuccess response direction =
     div [ class "dropdown" ]
         [ dropdownHead
-        , dropdownBody
+        , dropdownBody [makeRequestInDirectionButton, makeRequestOutDirectionButton]
         , almostClearSearchButton [ text "Clear Search" ]
         , viewTitlesSearched response.titles
         , viewDirectedResponse response direction
@@ -231,14 +252,18 @@ dropdownHead =
     p [ class "header" ] [ text "Search For A Tap In!" ]
 
 
-dropdownBody : Html Msg
-dropdownBody =
+dropdownBody : List (Html Msg) -> Html Msg
+dropdownBody moreHtml =
     div [ class "dropdown-body" ]
-        [ input [ class "search-box", onInput SearchInput ] []
-        , makeRequestInDirectionButton
-        , makeRequestOutDirectionButton
-        ]
+        ([ input [ class "search-box", onInput SearchInput ] []
+        ] ++ moreHtml)
 
+dropDownHeadAndBody : List (Html Msg) -> Html Msg
+dropDownHeadAndBody moreHtml =
+    div [ class "dropdown" ]
+        [ dropdownHead
+        , dropdownBody moreHtml
+        ]
 
 makeRequestInDirectionButton : Html Msg
 makeRequestInDirectionButton =
@@ -248,6 +273,18 @@ makeRequestInDirectionButton =
 makeRequestOutDirectionButton : Html Msg
 makeRequestOutDirectionButton =
     button [ class "button", onClick (RequestMade Out) ] [ text "out" ]
+
+almostClearSearchButton : List (Html Msg) -> Html Msg
+almostClearSearchButton =
+    button [ class "button", onClick ClearSearch ]
+
+addSearchButton : Html Msg
+addSearchButton =
+    button [ class "button", onClick AddSearch ] [ text "Add Search" ]
+
+confirmSearchButton : String -> Html Msg
+confirmSearchButton title =
+    button [ class "button", onClick (ConfirmSearch title)] [text "Confirm"]
 
 
 viewTitlesSearched : List String -> Html Msg
@@ -269,11 +306,6 @@ viewResponse : Response -> String -> Html Msg
 viewResponse response textToDisplay =
     ul [ class "response" ]
         [ ul [] ([ text textToDisplay ] ++ responseItems response.related_pages) ]
-
-
-almostClearSearchButton : List (Html Msg) -> Html Msg
-almostClearSearchButton =
-    button [ class "dropdown", onClick ClearSearch ]
 
 
 responseItems : List String -> List (Html Msg)
