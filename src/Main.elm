@@ -31,7 +31,6 @@ type alias Model =
     { state : State
     , query : Maybe String
     , selected : List String
-    , rank : Int
     }
 
 
@@ -54,7 +53,6 @@ initialModel =
     { state = BuildingRequest
     , query = Nothing
     , selected = []
-    , rank = 1
     }
 
 
@@ -106,7 +104,7 @@ update msg model =
             ( initialModel, Cmd.none )
 
         AddSearch ->
-            ( { model | rank = model.rank + 1 }, Cmd.none )
+            ( { model | state = BuildingRequest }, Cmd.none )
 
         ConfirmSearch title ->
             ( { model | state = SearchConfirmed, selected = model.selected ++ [ title ] }, Cmd.none )
@@ -192,6 +190,7 @@ viewSearchConfirmed model =
     div [ class "dropdown" ]
         [ dropDownHeadAndBody [ makeRequestInDirectionButton, makeRequestOutDirectionButton ]
         , defaultClearSearchButton
+        , addSearchButton
         , viewConfirmations model
         ]
 
@@ -206,22 +205,38 @@ viewBuildingRequest : Model -> Html Msg
 viewBuildingRequest model =
     case model.query of
         Nothing ->
-            viewNoInput
+            viewBuildingRequestWithNoInputButMaybeSomeConfirmed model
 
         Just title ->
             case title of
                 "" ->
-                    viewNoInput
+                    viewBuildingRequestWithNoInputButMaybeSomeConfirmed model
 
                 _ ->
-                    div [ class "dropdown" ]
-                        [ dropDownHeadAndBody [ confirmSearchButton title ] ]
+                    case model.selected of
+                        [] ->
+                            div [ class "dropdown" ]
+                                [ dropDownHeadAndBody [ confirmSearchButton title ] ]
+
+                        _ ->
+                            div [ class "dropdown" ]
+                                [ dropDownHeadAndBody [ confirmSearchButton title, viewConfirmations model ] ]
 
 
 viewNoInput : Html Msg
 viewNoInput =
     div [ class "dropdown" ]
         [ dropDownHeadAndBody [] ]
+
+
+viewBuildingRequestWithNoInputButMaybeSomeConfirmed model =
+    case model.selected of
+        [] ->
+            viewNoInput
+
+        _ ->
+            div [ class "dropdown" ]
+                [ dropDownHeadAndBody [ viewConfirmations model ] ]
 
 
 viewLoading : Html Msg
