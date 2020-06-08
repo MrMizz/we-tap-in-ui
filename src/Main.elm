@@ -91,10 +91,10 @@ update msg model =
         RequestMade direction ->
             case direction of
                 In ->
-                    updateWithRequest model buildRequestInDirection PostReceivedIn
+                    updateWithRequest model (buildRequest "in") PostReceivedIn
 
                 Out ->
-                    updateWithRequest model buildRequestOutDirection PostReceivedOut
+                    updateWithRequest model (buildRequest "out") PostReceivedOut
 
         PostReceivedIn result ->
             updateWithResponse model result In
@@ -109,16 +109,11 @@ update msg model =
             ( { model | rank = model.rank + 1 }, Cmd.none )
 
         ConfirmSearch title ->
-            ( { model | state = SearchConfirmed, selected = (model.selected ++ [title]) }, Cmd.none )
+            ( { model | state = SearchConfirmed, selected = model.selected ++ [ title ] }, Cmd.none )
 
 
-updateWithRequest model buildRequest toMsg =
-    case model.query of
-        Just query ->
-            ( { model | state = Loading }, post (buildRequest query) toMsg )
-
-        Nothing ->
-            ( { model | state = BuildingRequest }, Cmd.none )
+updateWithRequest model buildRequestArg toMsg =
+    ( { model | state = Loading }, post (buildRequestArg model.selected) toMsg )
 
 
 updateWithResponse model result direction =
@@ -164,14 +159,9 @@ responseDecoder =
         (Decode.field "related_pages" (Decode.list Decode.string))
 
 
-buildRequestInDirection : String -> Request
-buildRequestInDirection selected =
-    Request [ selected ] "in"
-
-
-buildRequestOutDirection : String -> Request
-buildRequestOutDirection selected =
-    Request [ selected ] "out"
+buildRequest : String -> List String -> Request
+buildRequest directionString selected =
+    Request selected directionString
 
 
 
@@ -185,7 +175,7 @@ view model =
             viewBuildingRequest model
 
         SearchConfirmed ->
-            viewSearchConfirmed
+            viewSearchConfirmed model
 
         Loading ->
             viewLoading
@@ -196,21 +186,43 @@ view model =
         RequestFailure error ->
             viewRequestFailure error
 
-viewSearchConfirmed : Html Msg
-viewSearchConfirmed =
+
+viewSearchConfirmed : Model -> Html Msg
+viewSearchConfirmed model =
     div [ class "dropdown" ]
-        [(dropDownHeadAndBody [makeRequestInDirectionButton, makeRequestOutDirectionButton])]
+        [ dropDownHeadAndBody [ makeRequestInDirectionButton, makeRequestOutDirectionButton ]
+        , defaultClearSearchButton
+        , viewConfirmations model
+        ]
+
+
+viewConfirmations : Model -> Html Msg
+viewConfirmations model =
+    ul [ class "dropdown" ]
+        ([ text "We're Searching For:" ] ++ List.map fromTitleToUrlHtml model.selected)
+
 
 viewBuildingRequest : Model -> Html Msg
 viewBuildingRequest model =
     case model.query of
         Nothing ->
-            div [ class "dropdown" ]
-                [(dropDownHeadAndBody [])]
+            viewNoInput
 
         Just title ->
-            div [ class "dropdown" ]
-                [(dropDownHeadAndBody [confirmSearchButton title])]
+            case title of
+                "" ->
+                    viewNoInput
+
+                _ ->
+                    div [ class "dropdown" ]
+                        [ dropDownHeadAndBody [ confirmSearchButton title ] ]
+
+
+viewNoInput : Html Msg
+viewNoInput =
+    div [ class "dropdown" ]
+        [ dropDownHeadAndBody [] ]
+
 
 viewLoading : Html Msg
 viewLoading =
@@ -221,8 +233,8 @@ viewRequestSuccess : Response -> Direction -> Html Msg
 viewRequestSuccess response direction =
     div [ class "dropdown" ]
         [ dropdownHead
-        , dropdownBody [makeRequestInDirectionButton, makeRequestOutDirectionButton]
-        , almostClearSearchButton [ text "Clear Search" ]
+        , dropdownBody [ makeRequestInDirectionButton, makeRequestOutDirectionButton ]
+        , defaultClearSearchButton
         , viewTitlesSearched response.titles
         , viewDirectedResponse response direction
         ]
@@ -256,7 +268,10 @@ dropdownBody : List (Html Msg) -> Html Msg
 dropdownBody moreHtml =
     div [ class "dropdown-body" ]
         ([ input [ class "search-box", onInput SearchInput ] []
-        ] ++ moreHtml)
+         ]
+            ++ moreHtml
+        )
+
 
 dropDownHeadAndBody : List (Html Msg) -> Html Msg
 dropDownHeadAndBody moreHtml =
@@ -264,6 +279,7 @@ dropDownHeadAndBody moreHtml =
         [ dropdownHead
         , dropdownBody moreHtml
         ]
+
 
 makeRequestInDirectionButton : Html Msg
 makeRequestInDirectionButton =
@@ -274,17 +290,25 @@ makeRequestOutDirectionButton : Html Msg
 makeRequestOutDirectionButton =
     button [ class "button", onClick (RequestMade Out) ] [ text "out" ]
 
+
 almostClearSearchButton : List (Html Msg) -> Html Msg
 almostClearSearchButton =
     button [ class "button", onClick ClearSearch ]
+
+
+defaultClearSearchButton : Html Msg
+defaultClearSearchButton =
+    almostClearSearchButton [ text "Clear Search" ]
+
 
 addSearchButton : Html Msg
 addSearchButton =
     button [ class "button", onClick AddSearch ] [ text "Add Search" ]
 
+
 confirmSearchButton : String -> Html Msg
 confirmSearchButton title =
-    button [ class "button", onClick (ConfirmSearch title)] [text "Confirm"]
+    button [ class "button", onClick (ConfirmSearch title) ] [ text "Confirm" ]
 
 
 viewTitlesSearched : List String -> Html Msg
